@@ -106,6 +106,28 @@ void update_cursor()
     */
 }
 
+
+char *convert(unsigned int num, int base)
+{
+static char buf[33];
+char *ptr;
+
+ptr=&buf[sizeof(buf)-1];
+*ptr='\0';
+do
+{
+*--ptr="0123456789abcdef"[num%base];
+num/=base;
+}while(num!=0);
+return(ptr);
+}
+
+/*
+Prints the given values to the screen. Since it is 64 bit machine, the way va_arg
+works is different. All the variables passed through the registers are pushed into
+register-saved-area of the stack. Then the general purpose registers and the floating
+point registers follow. Thus the va_arg function accesses this area smoothly.
+*/
 int kprintf(char *fmt,...){
 	char *p;
 	int i; // integer argument
@@ -118,7 +140,7 @@ int kprintf(char *fmt,...){
 				fixed argument is in order to find the starting of 
 				the variable list. 
 			     */
-	for(p=fmt; p!='\0'; p++){
+	for(p=fmt; *p ; p++){
 		if(*p != '%'){
 			write_char(0x1F,*p);
 			continue;
@@ -129,6 +151,10 @@ int kprintf(char *fmt,...){
 				  break;
 			case 's': s = va_arg(arg_p, char*);
 				  write_string(0x1F,s);
+				  break;
+			case 'd': i = va_arg(arg_p, int);
+				  write_string(0x1F,convert(i,10));
+				  break;
 		}
 	} 
 	va_end(arg_p);
@@ -160,6 +186,7 @@ void boot(void)
 	volatile register char *rsp asm ("rsp");
 	volatile register char *temp1, *temp2;
 	int length;
+	int ii=9;
 	int *p = NULL;
 	//int q;
 	loader_stack = (uint32_t*)rsp;
@@ -180,6 +207,6 @@ void boot(void)
     //write_string("!!!! start returned !!!!");
     write_string(0x1F,"Chidambaram");
     write_string(0x1F,"sjdhkajsdhajkdhkjasdhkajsasdsadasdasdasdasdadasfgfghhjkui");
-    kprintf("%s","Chid");
+    kprintf("String is %s and Integer is %d","Chid",ii);
 	while(1);
 }
