@@ -1,5 +1,18 @@
+/*
+defs.h - Included typedefs for datatypes 
+*/
 #include <defs.h>
+
+/*
+stdarg.h - Included variable list definitions
+*/
+#include <stdarg.h> 
+
+/*
+io.h - Included the asm instruction (out) in order to update the cursor 
+*/
 #include <io.h>
+
 #define START_MEMORY 0xB8000// Staring address of VGA BUFFER ( VGA MEMORY )
 
 char* video_memory = (char *)START_MEMORY;
@@ -7,6 +20,9 @@ void update_cursor(void);
 
 char c;
 
+/*
+Function to find the length of the string.
+*/
 int strlen(const char *s){
 	int length=0;
 	char* local_s = (char *)s;
@@ -16,6 +32,7 @@ int strlen(const char *s){
 	}
 	return length;
 }
+
 /*
 Writes to the video memory buffer. The text screen video memory for color monitors
 resides at 0xB8000. Text mode memory takes two bytes for each character on the
@@ -23,23 +40,34 @@ screen. One is the ASCII code byte, other is the attribute byte. The attribute
 byte carries the foreground color in the lower 4 bits, and the background color
 in the higher 3 bits. 0x00 is black on black and nothing can be seen. 0x07 is
 lightgrey on black. 0x1F is white on blue. 
-
 I guess as and when we write to this buffer of the video memory, it
 consumes it and puts it out on the screen. 
-
 */
-void write_string( int colour, const char *string )
+void write_string( int color, const char *string )
 {
     volatile char *video = (volatile char*)video_memory;
     //int length = strlen(string);
     while( *string != NULL )
     {
         *video++ = *string++;
-        *video++ = colour;
+        *video++ = color;
 //	(char *)video_memory++;
     }
     video_memory = (char *)(video);
     update_cursor();
+}
+
+
+/*
+Trivial function. Writes a byte ( character ) to the current pointer of the video
+buffer and updates the video memory.
+*/
+void write_char(int color, char c)
+{
+	volatile char *video = (volatile char*)video_memory;
+	*video++ = c;
+	*video++ = color;
+	video_memory = (char *)(video);
 }
 
 
@@ -76,6 +104,35 @@ void update_cursor()
 	outb statementwill yield 00000100 and second outb statement will yield
 	00011001.
     */
+}
+
+int kprintf(char *fmt,...){
+	char *p;
+	int i; // integer argument
+	//unsigned u; // unsigned int argument
+	char *s; // string argument
+	va_list arg_p; // pointer to the variable argument list
+	va_start(arg_p, fmt); /* Initializes the pointer to retrieve the additional
+				parameters. Should call va_end before end. fmt is
+				also passed because, we need to know where the last
+				fixed argument is in order to find the starting of 
+				the variable list. 
+			     */
+	for(p=fmt; p!='\0'; p++){
+		if(*p != '%'){
+			write_char(0x1F,*p);
+			continue;
+		}
+		switch(*++p){
+			case 'c': i = va_arg(arg_p, int);
+				  write_char(0x1F,i); 
+				  break;
+			case 's': s = va_arg(arg_p, char*);
+				  write_string(0x1F,s);
+		}
+	} 
+	va_end(arg_p);
+	return 1;	
 }
 
 void start(void* modulep, void* physbase, void* physfree)
@@ -122,6 +179,7 @@ void boot(void)
 	update_cursor();
     //write_string("!!!! start returned !!!!");
     write_string(0x1F,"Chidambaram");
-    write_string(0x1F,"\nsjdhkajsdhajkdhkjasdhkajsasds\nadasdasdasda\nsdadasfgfghhjkui");
+    write_string(0x1F,"sjdhkajsdhajkdhkjasdhkajsasdsadasdasdasdasdadasfgfghhjkui");
+    kprintf("%s","Chid");
 	while(1);
 }
